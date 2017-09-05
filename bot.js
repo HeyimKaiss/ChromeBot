@@ -28,7 +28,7 @@ client.on("ready", () => {
     client.setInterval(setGame, 200000);
 })
 
-client.login("MzUyNzUyMzkyNjc4MTQ2MDUw.DI9bwQ.J2EgYhChJzZWHTjPBwGfoZoZrx4")
+client.login("")
 
 var prefix = "gm:"
 
