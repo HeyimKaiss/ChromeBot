@@ -1,5 +1,11 @@
 const Discord = require('discord.js');
 const client = new Discord.Client()
+const config = require('./config.json')
+
+// Variables for config.json
+var token = config.bot_token
+var prefix = config.prefix
+var ver = config.version
 
  // Bot user status
 function setGame() {
@@ -28,11 +34,7 @@ client.on("ready", () => {
     client.setInterval(setGame, 200000);
 })
 
-client.login("")
-
-var prefix = "gm:"
-
-var ver = "0.3"
+client.login(token)
 
 client.on("message", function(message) {
 
@@ -98,9 +100,9 @@ break;
 		  var embed = new Discord.RichEmbed()
                 .setAuthor("Help Guide")
                 .setDescription("To execute one of my commands you have to type in gm: first")
-                .addField("General Commands", "ping\npingtime\nchrome\navatar\nuptime\nversion\npurge")
-                .addField("Music Commands", "play\nskip\nstop\nvol\nsummon\npause\nresume")
-				.addField("Fun Commands", "joke\nsay\nask")
+                .addField("General Commands", "ping\npingtime\nchrome\navatar\nuptime\nversion\npurge", true)
+                .addField("Music Commands", "play\nskip\nstop\nvol\nsummon\npause\nresume", true)
+		.addField("Fun Commands", "joke\nsay\nask", true)
                 .setColor("#1E90FF")   
            message.author.send({embed});		
             break;
