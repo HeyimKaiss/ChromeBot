@@ -1,13 +1,13 @@
-const Discord = require('discord.js');
-const client = new Discord.Client()
-const config = require('./config.json')
+const Eris = require('eris');
+const fs = require('fs');
+const config = require('./config.json');
 
-// Variables for config.json
-var token = config.bot_token
-var prefix = config.prefix
-var ver = config.version
+var bot = new Eris(config.token);
+bot.getBotGateway().then(result => {
+    let shards = result.shards;
+    bot.options.maxShards = shards;
+});
 
- // Bot user status
 function setGame() {
     var games = [
         "ChromeBot",
@@ -15,150 +15,78 @@ function setGame() {
 		"with tyson"
     ]
 
-    client.user.setPresence({
-        status: 'online',
-        afk: false,
-        game: {
-            type: 0,
-            name: games[Math.floor(Math.random() * games.length)]
-        }
-    })
+    bot.editStatus('online', {name: games[Math.floor(Math.random() * games.length)], type: 0});
 }
 
-// Bot ready
-client.on("ready", () => {
-    console.log(`=======================================\n`,
-                `=======================================\n`);
-    
-    setGame();
-    client.setInterval(setGame, 200000);
-})
+bot.commands = new Eris.Collection();
+bot.aliases = new Eris.Collection();
 
-client.login(token)
-
-client.on("message", function(message) {
-
-    if (message.author.equals(client.user)) return;
-
-    if (!message.content.startsWith(prefix)) return;
-
-    var args = message.content.substring(prefix.length).split(" ");
-
-    switch (args[0]) {
-        //ping command
-        case "ping":
-            message.channel.send("pong!")
-            break;
-        case "pingtime":
-            message.channel.send("Pong! Response Time: " + client.ping + "ms")
-            break;
-		case "chrome":
-		   
-			 break;
-	    case "avatar":
-		 if (message.mentions.users.first()) {
-            	var mentionmembers = message.mentions.members.first()
-            	var mentionusers = message.mentions.users.first()
-            	var embed = new Discord.RichEmbed()
-            		.setAuthor("The user's avatar is")
-                    .setImage(mentionusers.displayAvatarURL)
-					.setColor("#1E90FF")
-            	message.channel.send({embed})
-            } else {
-                var embed = new Discord.RichEmbed()
-                    .setAuthor("Your Current Avatar is")
-                    .setImage(message.author.displayAvatarURL)
-					.setColor("#1E90FF")
-                message.channel.send({embed})
-            }
-            break;
-			
-     case "purge":
-  const user = message.mentions.users.first();
-const amount = !!parseInt(message.content.split(' ')[1]) ? parseInt(message.content.split(' ')[1]) : parseInt(message.content.split(' ')[2])
-if (!amount) return message.reply('Must specify an amount to delete!');
-if (!amount && !user) return message.reply('Must specify a user and amount, or just an amount, of messages to purge!');
-message.channel.fetchMessages({
- limit: amount,
-}).then((messages) => {
- if (user) {
- const filterBy = user ? user.id : Client.user.id;
- messages = messages.filter(m => m.author.id === filterBy).array().slice(0, amount);
- }
- message.channel.bulkDelete(messages).catch(error => console.log(error.stack));
+fs.readdir('./commands/', (err, files) => {
+    if (err) console.error(err);
+    console.log(`Attempting to load a total of ${files.length} commands into the memory.`, false);
+    files.forEach(file => {
+        try{
+            let command = require(`./commands/${file}`);
+            console.log(`Attempting to load the command "${command.help.name}".`, false);
+            bot.commands.set(command.help.name, command);
+            command.conf.aliases.forEach(alias => {
+                bot.aliases.set(alias, command.help.name);
+                console.log(`Attempting to load "${alias}" as an alias for "${command.help.name}"`, false);
+            });
+        }
+        catch(err){
+            console.log('An error has occured trying to load a command. Here is the error.');
+            console.log(err);
+        }
+    });
+    console.log('Command Loading complete!');
 });
 
-break;
-		case "help":
-            var embed = new Discord.RichEmbed()
-                .setAuthor("Help DM")
-                .setDescription("Sent you a DM With a List of commands")
-                .setColor("#1E90FF")
-            message.channel.send({embed});
-
-            var embed = new Discord.RichEmbed()
-		  var embed = new Discord.RichEmbed()
-                .setAuthor("Help Guide")
-                .setDescription("To execute one of my commands you have to type in gm: first")
-                .addField("General Commands", "ping\npingtime\nchrome\navatar\nuptime\nversion\npurge", true)
-                .addField("Music Commands", "play\nskip\nstop\nvol\nsummon\npause\nresume", true)
-		.addField("Fun Commands", "joke\nsay\nask", true)
-                .setColor("#1E90FF")   
-           message.author.send({embed});		
-            break;
-		case "uptime":
-		embed = new Discord.RichEmbed()
-		var time;
-		var uptime = parseInt(client.uptime);
-		uptime = Math.floor(uptime / 1000);
-        var uptimeMinutes = Math.floor(uptime / 60);
-        var minutes = uptime % 60;
-        var hours = 0;
-        while (uptimeMinutes >= 60) {
-            hours++;
-            uptimeMinutes = uptimeMinutes - 60;
+bot.reload = command => {
+    return new Promise((resolve, reject) => {
+        try {
+            delete require.cache[require.resolve(`./commands/${command}`)];
+            let cmd = require(`./commands/${command}`);
+            bot.commands.delete(command);
+            bot.aliases.forEach((cmd, alias) => {
+                if (cmd === command) bot.aliases.delete(alias);
+            });
+            bot.commands.set(command, cmd);
+            cmd.conf.aliases.forEach(alias => {
+                bot.aliases.set(alias, cmd.help.name);
+            });
+            resolve();
+        } catch (e){
+            reject(e);
         }
-		var uptimeSeconds = minutes % 60;
-		var days = Math.floor(hours / 24);
-            embed.setDescription("ChromeBot is active since " + days + " days, " + hours + " hours, " + uptimeMinutes + " minutes, and " + uptimeSeconds + " seconds.")
-            embed.setColor("#1E90FF")
-        message.channel.send({ embed })
-		break;
-		case "version":
-		message.channel.send("The Current Version of ChromeBot is " + ver)
-		break;
-		 case "say":
-		   try {
-                    if(message.content.length < prefix.length + 4) {
-                        message.channel.send("Come on, say something!")
-                        break
-                    } else { 
-							message.channel.send(message.content.replace(prefix + "say ", ''));
-					message.delete();
-							}
-					} catch(err) {
-						message.channel.send(error)
-					}
-            break;
-			 case "question":
-			if(message.content.length < prefix.length + 6) {
-                message.channel.send("ask me!")
-                break
-            } else {        
-                var choices = ["Yeah.", "Nope.", "Maybe.", "yes.","no."]
-                var rand = choices[Math.floor(Math.random() * choices.length)];                    
-                message.reply(rand)  
-                break;
-            }
-			 case "joke":
-			if(message.content.length < prefix.length + 6) {
-                message.channel.send("please type (gm:joke !) to get a joke")
-                break;
-            }  else {        
-                var choices = ["once a cat was walking and then you looked", "HK:Hello Kitty", "you are here asking me for a joke", "meow","You just Looked"]
-                var rand = choices[Math.floor(Math.random() * choices.length)];                    
-                message.reply(rand)  
-                break;
-			}	
-}
-})
+    });
+};
+bot.on('ready', () => {
+    console.log(`=======================================\n`,
+            `=======================================\n`);
+    setGame();
+    bot.setInterval(setGame, 200000);
+});
+
+bot.on('messageCreate', (msg) => {
+    let prefix = config.prefix
+    let args = msg.content.slice(prefix.length).trim().split(/ +/g);
+    let command = args.shift();
+    console.log(args);
+    let cmd;
+    if (bot.commands.has(command)) {
+        cmd = bot.commands.get(command);
+    } else if (bot.aliases.has(command)) {
+        cmd = bot.commands.get(bot.aliases.get(command));
+    }
+    if (cmd) {
+        try{
+            cmd.run(bot, msg, args);
+        }
+        catch(e){
+            msg.channel.createMessage({ embed: bot.errorMessage(bot, e.stack) });
+        }
+    }
+});
+
+bot.connect();
